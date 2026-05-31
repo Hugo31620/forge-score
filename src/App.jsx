@@ -13,6 +13,10 @@ import {
    Forge-IA · Hugo Mintegui
    ============================================================ */
 
+// ---- CONFIG ----
+// Remplace XXXXXXXX par ton identifiant Formspree (formspree.io)
+const FORMSPREE_URL = "https://formspree.io/f/xgoqbnnv";
+
 // ---- PALETTE ----
 const C = {
   bg: "#07090F", bg2: "#0D1117", bg3: "#111820",
@@ -489,7 +493,38 @@ function Results({ setup, result, onRestart }) {
   const radarData = AXE_ORDER.map((a) => ({ axe: AXES[a].split(" ")[0], score: result.axisScores[a] }));
   const bench = result.sector.bench;
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const gradeColor = result.global >= 66 ? C.cyan : result.global >= 36 ? "#FFB84D" : C.orange;
+
+  const sendLead = async () => {
+    if (!email.trim() || sending || sent) return;
+    setSending(true);
+    try {
+      await fetch(FORMSPREE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          email,
+          entreprise: setup.ent,
+          contact: setup.nom,
+          secteur: result.sector.label,
+          taille: setup.size,
+          score: result.global,
+          note: result.grade,
+          niveau: result.niveau,
+          levier_1: result.quickWins[0]?.label,
+          levier_2: result.quickWins[1]?.label,
+          levier_3: result.quickWins[2]?.label,
+        }),
+      });
+      setSent(true);
+    } catch (e) {
+      setSent(true); // on confirme quand même au prospect
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="fg-fade" style={{ maxWidth: 760, margin: "0 auto", padding: "5vh 24px 8vh", position: "relative", zIndex: 1 }}>
@@ -558,11 +593,14 @@ function Results({ setup, result, onRestart }) {
         </div>
         <div style={{ display: "flex", gap: 10, maxWidth: 440, margin: "0 auto", flexWrap: "wrap" }}>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.fr"
-            style={{ flex: 1, minWidth: 200, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 15px", color: C.text, ...body, fontSize: 14, outline: "none" }} />
-          <button style={{ ...mono, fontSize: 13, padding: "13px 24px", background: C.orange, color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
-            <Mail size={15} /> Envoyer
+            disabled={sent}
+            style={{ flex: 1, minWidth: 200, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 15px", color: C.text, ...body, fontSize: 14, outline: "none", opacity: sent ? 0.6 : 1 }} />
+          <button onClick={sendLead} disabled={sending || sent}
+            style={{ ...mono, fontSize: 13, padding: "13px 24px", background: sent ? "#1D9E75" : C.orange, color: "#fff", border: "none", borderRadius: 4, cursor: sent ? "default" : "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 8, opacity: sending ? 0.7 : 1 }}>
+            {sent ? <><Check size={15} /> Envoyé</> : <><Mail size={15} /> {sending ? "Envoi…" : "Envoyer"}</>}
           </button>
         </div>
+        {sent && <div style={{ ...body, fontSize: 13, color: C.cyan, marginTop: 14 }}>Merci ! Hugo vous recontacte sous 24h.</div>}
       </div>
 
       <button onClick={onRestart} style={{ ...mono, fontSize: 12, color: C.muted, background: "none", border: "none", cursor: "pointer", marginTop: 28, display: "block", marginInline: "auto" }}>
@@ -594,7 +632,18 @@ export default function App() {
 
       {/* header */}
       <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: `1px solid ${C.border}`, background: "rgba(7,9,15,0.7)", backdropFilter: "blur(12px)" }}>
-        <div style={{ ...syne, fontWeight: 800, fontSize: 20, color: C.text }}>Forge<span style={{ color: C.cyan }}>-IA</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <svg viewBox="0 0 120 120" width="32" height="32" style={{ display: "block" }}>
+            <rect width="120" height="120" rx="27" fill="#0D1117" />
+            <g transform="translate(-3.5,1.5)">
+              <rect x="28" y="30" width="15" height="66" fill="#FFFFFF" />
+              <rect x="28" y="30" width="40" height="15" fill="#FFFFFF" />
+              <rect x="28" y="58" width="30" height="14" fill="#FFFFFF" />
+              <polygon points="82,21 86.24,33.76 99,38 86.24,42.24 82,55 77.76,42.24 65,38 77.76,33.76" fill="#00D4FF" />
+            </g>
+          </svg>
+          <div style={{ ...syne, fontWeight: 800, fontSize: 20, color: C.text }}>Forge<span style={{ color: C.cyan }}>-IA</span></div>
+        </div>
         <div style={{ ...mono, fontSize: 11, color: C.muted, letterSpacing: "0.1em" }}>FORGE SCORE</div>
       </div>
 
