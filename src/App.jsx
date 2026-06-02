@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ResponsiveContainer,
@@ -265,6 +265,156 @@ function GridBg() {
       maskImage: "radial-gradient(ellipse 100% 90% at 50% 35%,#000 30%,transparent 85%)",
       WebkitMaskImage: "radial-gradient(ellipse 100% 90% at 50% 35%,#000 30%,transparent 85%)",
       opacity: 0.7,
+    }} />
+  );
+}
+
+// ---- DATA FIELD (réseau neuronal animé sur les marges) ----
+// Canvas plein écran derrière le contenu. Les nœuds sont densifiés sur les
+// bords gauche/droite (densité atténuée au centre) pour remplir le vide
+// sans gêner la lecture. + ligne de scan verticale + colonnes hex discrètes.
+function DataField() {
+  const ref = useRef(null);
+  const mouse = useRef({ x: -9999, y: -9999 });
+
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas.getContext("2d");
+    let w, h, nodes = [], hexCols = [], raf, t = 0;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    // densité latérale : 0 au centre, 1 sur les bords
+    const sideWeight = (x) => {
+      const c = w / 2;
+      const d = Math.abs(x - c) / c;            // 0 centre → 1 bord
+      return Math.pow(d, 1.6);                   // concentre vers les bords
+    };
+
+    const HEX = "0123456789ABCDEF";
+    const randHex = (n) => Array.from({ length: n }, () => HEX[(Math.random() * 16) | 0]).join("");
+
+    function build() {
+      w = canvas.clientWidth; h = canvas.clientHeight;
+      canvas.width = w * DPR; canvas.height = h * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+      const count = Math.round(Math.min(120, (w * h) / 14000));
+      nodes = [];
+      let placed = 0, guard = 0;
+      while (placed < count && guard < count * 30) {
+        guard++;
+        const x = Math.random() * w, y = Math.random() * h;
+        if (Math.random() > sideWeight(x) * 0.9 + 0.08) continue; // rejette le centre
+        nodes.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 0.18,
+          vy: (Math.random() - 0.5) * 0.18,
+          r: Math.random() * 1.4 + 0.6,
+          pulse: Math.random() * Math.PI * 2,
+        });
+        placed++;
+      }
+
+      // colonnes hexadécimales sur les marges extrêmes
+      const colN = Math.max(2, Math.round(w / 360));
+      hexCols = [];
+      for (let i = 0; i < colN; i++) {
+        const left = i < colN / 2;
+        const x = left ? 24 + Math.random() * 90 : w - 120 + Math.random() * 90;
+        hexCols.push({
+          x,
+          y: Math.random() * h,
+          speed: 0.25 + Math.random() * 0.4,
+          rows: Array.from({ length: 14 + ((Math.random() * 10) | 0) }, () => randHex(2)),
+          step: 0,
+        });
+      }
+    }
+
+    function frame() {
+      t += 1;
+      ctx.clearRect(0, 0, w, h);
+
+      // colonnes hex (très discrètes)
+      ctx.font = "10px 'IBM Plex Mono', monospace";
+      hexCols.forEach((col) => {
+        col.y += col.speed;
+        if (col.y > h + 20) col.y = -col.rows.length * 16;
+        if (t % 26 === 0) col.rows[(Math.random() * col.rows.length) | 0] = randHex(2);
+        col.rows.forEach((r, i) => {
+          const yy = col.y + i * 16;
+          if (yy < -16 || yy > h + 16) return;
+          const head = i === col.rows.length - 1;
+          ctx.fillStyle = head ? "rgba(232,176,75,0.30)" : `rgba(127,179,213,${0.05 + (i / col.rows.length) * 0.07})`;
+          ctx.fillText(r, col.x, yy);
+        });
+      });
+
+      // mise à jour + liens
+      for (const n of nodes) {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < 0 || n.x > w) n.vx *= -1;
+        if (n.y < 0 || n.y > h) n.vy *= -1;
+        // répulsion souris
+        const dx = n.x - mouse.current.x, dy = n.y - mouse.current.y;
+        const dm = Math.hypot(dx, dy);
+        if (dm < 130 && dm > 0.1) { n.x += (dx / dm) * 0.7; n.y += (dy / dm) * 0.7; }
+      }
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 116) {
+            const o = (1 - d / 116) * 0.18;
+            ctx.strokeStyle = `rgba(127,179,213,${o})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
+      }
+
+      // nœuds
+      for (const n of nodes) {
+        n.pulse += 0.03;
+        const near = Math.hypot(n.x - mouse.current.x, n.y - mouse.current.y) < 130;
+        const glow = 0.45 + Math.sin(n.pulse) * 0.2;
+        ctx.fillStyle = near ? "rgba(232,176,75,0.85)" : `rgba(127,179,213,${glow})`;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + (near ? 1 : 0), 0, Math.PI * 2); ctx.fill();
+      }
+
+      // ligne de scan verticale lente
+      const scanY = (t * 0.4) % (h + 200) - 100;
+      const grad = ctx.createLinearGradient(0, scanY - 60, 0, scanY + 60);
+      grad.addColorStop(0, "rgba(232,176,75,0)");
+      grad.addColorStop(0.5, "rgba(232,176,75,0.05)");
+      grad.addColorStop(1, "rgba(232,176,75,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, scanY - 60, w, 120);
+
+      raf = requestAnimationFrame(frame);
+    }
+
+    build();
+    frame();
+    const onResize = () => build();
+    const onMove = (e) => { mouse.current = { x: e.clientX, y: e.clientY }; };
+    const onLeave = () => { mouse.current = { x: -9999, y: -9999 }; };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseleave", onLeave);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
+  return (
+    <canvas ref={ref} aria-hidden="true" style={{
+      position: "fixed", inset: 0, width: "100%", height: "100%",
+      pointerEvents: "none", zIndex: 0, opacity: 0.9,
     }} />
   );
 }
@@ -654,6 +804,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, position: "relative", overflow: "hidden", ...body }}>
       <GridBg />
+      <DataField />
       {/* glow ambré diffus */}
       <div style={{ position: "fixed", top: "10%", right: "-8%", width: 520, height: 520, background: "radial-gradient(circle,rgba(232,176,75,0.06),transparent 70%)", pointerEvents: "none", zIndex: 0, animation: "fgGlow 8s ease-in-out infinite" }} />
 
