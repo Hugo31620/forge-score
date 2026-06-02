@@ -17,12 +17,16 @@ import {
 // Remplace XXXXXXXX par ton identifiant Formspree (formspree.io)
 const FORMSPREE_URL = "https://formspree.io/f/xgoqbnnv";
 
-// ---- PALETTE ----
+// ---- PALETTE · Concept Blueprint (bleu de Prusse + or) ----
+// Conventions de nommage conservées (cyan/orange/borderCyan) pour ne pas
+// casser les références existantes ; les valeurs portent la nouvelle DA.
 const C = {
-  bg: "#07090F", bg2: "#0D1117", bg3: "#111820",
-  cyan: "#00D4FF", orange: "#FF6B1A",
-  text: "#E8EDF5", muted: "#7A8BA0", dim: "#3A4558",
-  border: "rgba(255,255,255,0.08)", borderCyan: "rgba(0,212,255,0.25)",
+  bg: "#0A1A2F", bg2: "#0D2138", bg3: "#102942",
+  cyan: "#7FB3D5",            // bleu-acier — annotations, tracés secondaires
+  orange: "#E8B04B",          // or — accent principal / CTA
+  text: "#EDE7D8",            // papier
+  muted: "#9FB0C2", dim: "#5A6E84",
+  border: "rgba(127,179,213,0.16)", borderCyan: "rgba(232,176,75,0.32)",
 };
 
 // ---- AXES ----
@@ -193,14 +197,14 @@ function useBrandStyles() {
   useEffect(() => {
     const l = document.createElement("link");
     l.rel = "stylesheet";
-    l.href = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap";
+    l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap";
     document.head.appendChild(l);
     const st = document.createElement("style");
     st.textContent = `
       @keyframes fgFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
       @keyframes fgSlideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
       @keyframes fgPulse{0%,100%{opacity:.5}50%{opacity:1}}
-      @keyframes fgGridMove{from{background-position:0 0}to{background-position:60px 60px}}
+      @keyframes fgGridMove{from{background-position:0 0,0 0,0 0,0 0}to{background-position:28px 28px,28px 28px,140px 140px,140px 140px}}
       @keyframes fgGlow{0%,100%{opacity:.4}50%{opacity:.7}}
       @keyframes fgSpin{to{transform:rotate(360deg)}}
       .fg-fade{animation:fgFadeUp .6s cubic-bezier(.2,.7,.2,1) both}
@@ -215,23 +219,31 @@ function useBrandStyles() {
 }
 
 const mono = { fontFamily: "'IBM Plex Mono', monospace" };
-const syne = { fontFamily: "'Syne', sans-serif" };
-const body = { fontFamily: "'DM Sans', sans-serif" };
+const syne = { fontFamily: "'Fraunces', Georgia, serif" };
+const body = { fontFamily: "'IBM Plex Sans', sans-serif" };
 
-// ---- GRID BACKGROUND ----
+// ---- GRID BACKGROUND (plan d'ingénieur) ----
 function GridBg() {
   return (
     <div style={{
       position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-      backgroundImage: `linear-gradient(${C.cyan}0a 1px,transparent 1px),linear-gradient(90deg,${C.cyan}0a 1px,transparent 1px)`,
-      backgroundSize: "60px 60px", animation: "fgGridMove 20s linear infinite", opacity: 0.5,
+      backgroundImage:
+        `linear-gradient(${C.cyan}24 1px,transparent 1px),` +
+        `linear-gradient(90deg,${C.cyan}24 1px,transparent 1px),` +
+        `linear-gradient(${C.cyan}40 1px,transparent 1px),` +
+        `linear-gradient(90deg,${C.cyan}40 1px,transparent 1px)`,
+      backgroundSize: "28px 28px,28px 28px,140px 140px,140px 140px",
+      animation: "fgGridMove 30s linear infinite",
+      maskImage: "radial-gradient(ellipse 100% 90% at 50% 35%,#000 30%,transparent 85%)",
+      WebkitMaskImage: "radial-gradient(ellipse 100% 90% at 50% 35%,#000 30%,transparent 85%)",
+      opacity: 0.7,
     }} />
   );
 }
 
 function Tag({ children }) {
-  return <div style={{ ...mono, fontSize: 11, color: C.cyan, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 14 }}>
-    <span style={{ color: C.dim }}>// </span>{children}
+  return <div style={{ ...mono, fontSize: 11, color: C.orange, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+    <span style={{ color: C.orange }}>⌖</span>{children}
   </div>;
 }
 
@@ -350,7 +362,7 @@ function Quiz({ onComplete, onBack, setup }) {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, height: 3, background: C.bg3, borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progress * 100}%`, background: C.cyan, borderRadius: 2, transition: "width .4s cubic-bezier(.2,.7,.2,1)" }} />
+          <div style={{ height: "100%", width: `${progress * 100}%`, background: C.orange, borderRadius: 2, transition: "width .4s cubic-bezier(.2,.7,.2,1)" }} />
         </div>
         <div style={{ ...mono, fontSize: 12, color: C.muted, minWidth: 52, textAlign: "right" }}>{idx + 1} / {total}</div>
       </div>
@@ -369,15 +381,15 @@ function Quiz({ onComplete, onBack, setup }) {
             return (
               <button key={i} className="fg-opt" onClick={() => choose(score)} style={{
                 ...body, textAlign: "left", padding: "16px 18px", borderRadius: 6, cursor: "pointer",
-                background: sel ? "rgba(0,212,255,0.08)" : C.bg2,
+                background: sel ? "rgba(232,176,75,0.10)" : C.bg2,
                 border: `1px solid ${sel ? C.borderCyan : C.border}`,
                 color: isJNS ? C.muted : C.text, fontSize: 15, fontStyle: isJNS ? "italic" : "normal",
                 display: "flex", alignItems: "center", gap: 14,
               }}>
                 <span style={{
                   width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                  border: `1.5px solid ${sel ? C.cyan : C.dim}`, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: sel ? C.cyan : "transparent",
+                  border: `1.5px solid ${sel ? C.orange : C.dim}`, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: sel ? C.orange : "transparent",
                 }}>{sel && <Check size={13} color={C.bg} strokeWidth={3} />}</span>
                 {label}
               </button>
@@ -393,7 +405,7 @@ function Quiz({ onComplete, onBack, setup }) {
           <div style={{ flex: 1 }}>
             <div style={{ ...mono, fontSize: 10, color: C.muted, letterSpacing: "0.08em", marginBottom: 6 }}>TENDANCE EN DIRECT</div>
             <div style={{ height: 5, background: C.bg3, borderRadius: 3, overflow: "hidden", position: "relative" }}>
-              <div style={{ height: "100%", width: `${liveAvg}%`, background: `linear-gradient(90deg,${C.orange},${C.cyan})`, borderRadius: 3, transition: "width .5s" }} />
+              <div style={{ height: "100%", width: `${liveAvg}%`, background: `linear-gradient(90deg,${C.cyan},${C.orange})`, borderRadius: 3, transition: "width .5s" }} />
               <div style={{ position: "absolute", top: -1, left: `${setup.sector ? SECTORS[setup.sector].bench.moy : 46}%`, width: 1, height: 7, background: C.muted }} />
             </div>
           </div>
@@ -480,7 +492,7 @@ function generateAnalysis(setup, result) {
 function AIAnalysis({ setup, result }) {
   const text = generateAnalysis(setup, result);
   return (
-    <div style={{ background: "linear-gradient(135deg,#0D1117,rgba(0,212,255,0.04))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "28px 26px", marginBottom: 22 }}>
+    <div style={{ background: "linear-gradient(135deg,#0D2138,rgba(232,176,75,0.05))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "28px 26px", marginBottom: 22 }}>
       <div style={{ ...mono, fontSize: 11, color: C.cyan, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
         <Sparkles size={14} /> Votre analyse personnalisée
       </div>
@@ -495,7 +507,7 @@ function Results({ setup, result, onRestart }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const gradeColor = result.global >= 66 ? C.cyan : result.global >= 36 ? "#FFB84D" : C.orange;
+  const gradeColor = result.global >= 66 ? C.orange : result.global >= 36 ? "#C9A24B" : C.cyan;
 
   const sendLead = async () => {
     if (!email.trim() || sending || sent) return;
@@ -532,7 +544,7 @@ function Results({ setup, result, onRestart }) {
 
       {/* SCORE HERO */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 22 }}>
-        <div style={{ background: "linear-gradient(135deg,#0D1117,rgba(0,212,255,0.04))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "30px 24px", textAlign: "center" }}>
+        <div style={{ background: "linear-gradient(135deg,#0D2138,rgba(232,176,75,0.05))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "30px 24px", textAlign: "center" }}>
           <div style={{ ...mono, fontSize: 10, color: C.cyan, letterSpacing: "0.15em", marginBottom: 6 }}>SCORE GLOBAL</div>
           <div style={{ ...syne, fontWeight: 800, fontSize: 84, lineHeight: 1, color: gradeColor }}><CountUp target={result.global} /></div>
           <div style={{ ...mono, fontSize: 11, color: C.muted }}>/ 100</div>
@@ -543,10 +555,10 @@ function Results({ setup, result, onRestart }) {
           <div style={{ ...mono, fontSize: 10, color: C.cyan, letterSpacing: "0.15em", marginBottom: 14 }}>VOS 5 AXES</div>
           <ResponsiveContainer width="100%" height={180}>
             <RadarChart data={radarData} outerRadius="72%">
-              <PolarGrid stroke="rgba(255,255,255,0.08)" />
-              <PolarAngleAxis dataKey="axe" tick={{ fill: C.muted, fontSize: 9, fontFamily: "DM Sans" }} />
+              <PolarGrid stroke="rgba(127,179,213,0.16)" />
+              <PolarAngleAxis dataKey="axe" tick={{ fill: C.muted, fontSize: 9, fontFamily: "IBM Plex Mono" }} />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar dataKey="score" stroke={C.cyan} fill={C.cyan} fillOpacity={0.18} strokeWidth={2} />
+              <Radar dataKey="score" stroke={C.orange} fill={C.orange} fillOpacity={0.16} strokeWidth={2} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -561,8 +573,8 @@ function Results({ setup, result, onRestart }) {
         <div style={{ ...body, fontSize: 14, color: C.muted, marginBottom: 24 }}>Votre position dans le secteur {result.sector.label}</div>
         <div style={{ position: "relative", height: 44, marginBottom: 8 }}>
           <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 6, background: C.bg3, borderRadius: 3 }} />
-          <div style={{ position: "absolute", top: 18, left: 0, width: `${bench.bot}%`, height: 6, background: "rgba(255,107,26,0.2)", borderRadius: 3 }} />
-          <div style={{ position: "absolute", top: 18, left: `${bench.top}%`, right: 0, height: 6, background: "rgba(0,212,255,0.15)", borderRadius: 3 }} />
+          <div style={{ position: "absolute", top: 18, left: 0, width: `${bench.bot}%`, height: 6, background: "rgba(232,176,75,0.18)", borderRadius: 3 }} />
+          <div style={{ position: "absolute", top: 18, left: `${bench.top}%`, right: 0, height: 6, background: "rgba(127,179,213,0.16)", borderRadius: 3 }} />
           <div style={{ position: "absolute", top: 12, left: `${bench.moy}%`, transform: "translateX(-50%)", width: 1, height: 18, background: C.muted }} />
           <div style={{ position: "absolute", top: -4, left: `${bench.moy}%`, transform: "translateX(-50%)", ...mono, fontSize: 9, color: C.muted, whiteSpace: "nowrap" }}>moy {bench.moy}</div>
           <div style={{ position: "absolute", top: 11, left: `${result.global}%`, transform: "translateX(-50%)", width: 20, height: 20, borderRadius: "50%", background: C.orange, border: `3px solid ${C.bg}`, boxShadow: `0 0 0 1px ${C.orange}` }} />
@@ -579,14 +591,14 @@ function Results({ setup, result, onRestart }) {
             <span style={{ ...mono, fontSize: 12, color: C.orange }}>{qw.score} / 100</span>
           </div>
           <div style={{ ...syne, fontWeight: 700, fontSize: 17, color: C.text, marginBottom: 12 }}>{qw.reco.t}</div>
-          <div style={{ background: "rgba(0,212,255,0.08)", borderLeft: `2px solid ${C.cyan}`, borderRadius: 2, padding: "8px 14px", ...body, fontSize: 13, color: C.text }}>
+          <div style={{ background: "rgba(232,176,75,0.10)", borderLeft: `2px solid ${C.orange}`, borderRadius: 2, padding: "8px 14px", ...body, fontSize: 13, color: C.text }}>
             <strong>→ Offre adaptée :</strong> {qw.reco.o}
           </div>
         </div>
       ))}
 
       {/* CTA */}
-      <div style={{ background: "linear-gradient(135deg,#0D1117,rgba(0,212,255,0.04))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "32px 26px", textAlign: "center", marginTop: 22 }}>
+      <div style={{ background: "linear-gradient(135deg,#0D2138,rgba(232,176,75,0.05))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "32px 26px", textAlign: "center", marginTop: 22 }}>
         <div style={{ ...syne, fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Recevez votre rapport complet</div>
         <div style={{ ...body, fontSize: 14, color: C.muted, marginBottom: 22, maxWidth: 420, marginInline: "auto" }}>
           Le rapport détaillé + 30 minutes d'échange gratuit avec Hugo pour transformer ce score en plan d'action.
@@ -627,24 +639,25 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, position: "relative", overflow: "hidden", ...body }}>
       <GridBg />
-      {/* glow */}
-      <div style={{ position: "fixed", top: "10%", left: "-10%", width: 500, height: 500, background: "radial-gradient(circle,rgba(0,212,255,0.06),transparent 70%)", pointerEvents: "none", zIndex: 0, animation: "fgGlow 8s ease-in-out infinite" }} />
+      {/* glow ambré diffus */}
+      <div style={{ position: "fixed", top: "10%", right: "-8%", width: 520, height: 520, background: "radial-gradient(circle,rgba(232,176,75,0.06),transparent 70%)", pointerEvents: "none", zIndex: 0, animation: "fgGlow 8s ease-in-out infinite" }} />
 
       {/* header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: `1px solid ${C.border}`, background: "rgba(7,9,15,0.7)", backdropFilter: "blur(12px)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <svg viewBox="0 0 120 120" width="32" height="32" style={{ display: "block" }}>
-            <rect width="120" height="120" rx="27" fill="#0D1117" />
+      <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: `1px solid ${C.borderCyan}`, background: "rgba(10,26,47,0.78)", backdropFilter: "blur(12px)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <svg viewBox="0 0 120 120" width="34" height="34" style={{ display: "block" }}>
+            <circle cx="60" cy="60" r="57" fill="none" stroke={C.orange} strokeWidth="1.5" />
+            <circle cx="60" cy="60" r="46" fill="none" stroke={C.cyan} strokeWidth="0.5" strokeDasharray="3 3" opacity="0.5" />
             <g transform="translate(-3.5,1.5)">
-              <rect x="28" y="30" width="15" height="66" fill="#FFFFFF" />
-              <rect x="28" y="30" width="40" height="15" fill="#FFFFFF" />
-              <rect x="28" y="58" width="30" height="14" fill="#FFFFFF" />
-              <polygon points="82,21 86.24,33.76 99,38 86.24,42.24 82,55 77.76,42.24 65,38 77.76,33.76" fill="#00D4FF" />
+              <rect x="28" y="30" width="14" height="64" fill={C.text} />
+              <rect x="28" y="30" width="38" height="14" fill={C.text} />
+              <rect x="28" y="56" width="28" height="13" fill={C.text} />
+              <polygon points="82,23 85.8,34.2 97,38 85.8,41.8 82,53 78.2,41.8 67,38 78.2,34.2" fill={C.orange} />
             </g>
           </svg>
-          <div style={{ ...syne, fontWeight: 800, fontSize: 20, color: C.text }}>Forge<span style={{ color: C.cyan }}>-IA</span></div>
+          <div style={{ ...syne, fontWeight: 600, fontSize: 21, color: C.text }}>Forge<span style={{ color: C.orange }}>-IA</span></div>
         </div>
-        <div style={{ ...mono, fontSize: 11, color: C.muted, letterSpacing: "0.1em" }}>FORGE SCORE</div>
+        <div style={{ ...mono, fontSize: 11, color: C.muted, letterSpacing: "0.14em" }}>FORGE SCORE · RÉF. FIA—2026</div>
       </div>
 
       {step === "intro" && <Intro onStart={() => setStep("setup")} />}
