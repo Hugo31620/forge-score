@@ -17,6 +17,34 @@ import {
 // Remplace XXXXXXXX par ton identifiant Formspree (formspree.io)
 const FORMSPREE_URL = "https://formspree.io/f/xgoqbnnv";
 
+// Envoi unique vers Formspree. `email` est le champ que Formspree utilise
+// pour l'autoréponse au client ; les autres champs te parviennent par mail.
+async function submitToFormspree(setup, result, extra = {}) {
+  const payload = {
+    email: setup.email,            // déclenche l'autoréponse client + recontact
+    _replyto: setup.email,
+    _subject: `Forge Score — ${setup.ent} · ${result.global}/100 (${result.grade})`,
+    entreprise: setup.ent,
+    contact: setup.nom,
+    secteur: result.sector.label,
+    taille: setup.size,
+    score: result.global,
+    note: result.grade,
+    niveau: result.niveau,
+    levier_1: result.quickWins[0]?.label,
+    levier_2: result.quickWins[1]?.label,
+    levier_3: result.quickWins[2]?.label,
+    ...extra,
+  };
+  const res = await fetch(FORMSPREE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Formspree " + res.status);
+  return res;
+}
+
 // ---- PALETTE · Concept Blueprint (bleu de Prusse + or) ----
 // Conventions de nommage conservées (cyan/orange/borderCyan) pour ne pas
 // casser les références existantes ; les valeurs portent la nouvelle DA.
@@ -291,8 +319,11 @@ function Intro({ onStart }) {
 function Setup({ onSubmit, onBack }) {
   const [ent, setEnt] = useState("");
   const [nom, setNom] = useState("");
+  const [email, setEmail] = useState("");
   const [sector, setSector] = useState("autre");
   const [size, setSize] = useState("micro");
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const ready = ent.trim() && nom.trim() && emailOk;
   const inputStyle = {
     width: "100%", background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 4,
     padding: "13px 15px", color: C.text, ...body, fontSize: 14, outline: "none", marginBottom: 18,
@@ -306,6 +337,8 @@ function Setup({ onSubmit, onBack }) {
       <input style={inputStyle} value={ent} onChange={(e) => setEnt(e.target.value)} placeholder="Ex. Boulangerie Martin" />
       <label style={labelStyle}>Votre prénom et nom</label>
       <input style={inputStyle} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex. Julie Martin" />
+      <label style={labelStyle}>Votre email professionnel</label>
+      <input type="email" style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Ex. julie@boulangerie-martin.fr" />
       <label style={labelStyle}>Votre secteur</label>
       <select style={inputStyle} value={sector} onChange={(e) => setSector(e.target.value)}>
         {Object.entries(SECTORS).map(([k, v]) => <option key={k} value={k} style={{ background: C.bg3 }}>{v.label}</option>)}
@@ -318,8 +351,8 @@ function Setup({ onSubmit, onBack }) {
         <button onClick={onBack} style={{ ...mono, fontSize: 13, padding: "13px 22px", background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, cursor: "pointer" }}>
           <ArrowLeft size={14} style={{ verticalAlign: "middle" }} /> Retour
         </button>
-        <button onClick={() => ent.trim() && nom.trim() && onSubmit({ ent: ent.trim(), nom: nom.trim(), sector, size })}
-          style={{ ...mono, flex: 1, fontSize: 14, padding: "13px 22px", background: ent.trim() && nom.trim() ? C.orange : C.bg3, color: ent.trim() && nom.trim() ? "#fff" : C.dim, border: "none", borderRadius: 4, cursor: ent.trim() && nom.trim() ? "pointer" : "not-allowed", fontWeight: 500 }}>
+        <button onClick={() => ready && onSubmit({ ent: ent.trim(), nom: nom.trim(), email: email.trim(), sector, size })}
+          style={{ ...mono, flex: 1, fontSize: 14, padding: "13px 22px", background: ready ? C.orange : C.bg3, color: ready ? "#fff" : C.dim, border: "none", borderRadius: 4, cursor: ready ? "pointer" : "not-allowed", fontWeight: 500 }}>
           Commencer le diagnostic →
         </button>
       </div>
@@ -504,32 +537,15 @@ function AIAnalysis({ setup, result }) {
 function Results({ setup, result, onRestart }) {
   const radarData = AXE_ORDER.map((a) => ({ axe: AXES[a].split(" ")[0], score: result.axisScores[a] }));
   const bench = result.sector.bench;
-  const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const gradeColor = result.global >= 66 ? C.orange : result.global >= 36 ? "#C9A24B" : C.cyan;
 
-  const sendLead = async () => {
-    if (!email.trim() || sending || sent) return;
+  const resendRecap = async () => {
+    if (sending || sent) return;
     setSending(true);
     try {
-      await fetch(FORMSPREE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          email,
-          entreprise: setup.ent,
-          contact: setup.nom,
-          secteur: result.sector.label,
-          taille: setup.size,
-          score: result.global,
-          note: result.grade,
-          niveau: result.niveau,
-          levier_1: result.quickWins[0]?.label,
-          levier_2: result.quickWins[1]?.label,
-          levier_3: result.quickWins[2]?.label,
-        }),
-      });
+      await submitToFormspree(setup, result, { source: "demande_rapport", rapport_demande: "oui" });
       setSent(true);
     } catch (e) {
       setSent(true); // on confirme quand même au prospect
@@ -599,20 +615,15 @@ function Results({ setup, result, onRestart }) {
 
       {/* CTA */}
       <div style={{ background: "linear-gradient(135deg,#0D2138,rgba(232,176,75,0.05))", border: `1px solid ${C.borderCyan}`, borderRadius: 10, padding: "32px 26px", textAlign: "center", marginTop: 22 }}>
-        <div style={{ ...syne, fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Recevez votre rapport complet</div>
-        <div style={{ ...body, fontSize: 14, color: C.muted, marginBottom: 22, maxWidth: 420, marginInline: "auto" }}>
-          Le rapport détaillé + 30 minutes d'échange gratuit avec Hugo pour transformer ce score en plan d'action.
+        <div style={{ ...syne, fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Recevez votre récap par email</div>
+        <div style={{ ...body, fontSize: 14, color: C.muted, marginBottom: 22, maxWidth: 440, marginInline: "auto" }}>
+          On envoie votre score et vos 3 leviers prioritaires à <strong style={{ color: C.text }}>{setup.email}</strong>, avec une proposition de 30 min d'échange gratuit pour transformer ce diagnostic en plan d'action.
         </div>
-        <div style={{ display: "flex", gap: 10, maxWidth: 440, margin: "0 auto", flexWrap: "wrap" }}>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.fr"
-            disabled={sent}
-            style={{ flex: 1, minWidth: 200, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 4, padding: "13px 15px", color: C.text, ...body, fontSize: 14, outline: "none", opacity: sent ? 0.6 : 1 }} />
-          <button onClick={sendLead} disabled={sending || sent}
-            style={{ ...mono, fontSize: 13, padding: "13px 24px", background: sent ? "#1D9E75" : C.orange, color: "#fff", border: "none", borderRadius: 4, cursor: sent ? "default" : "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 8, opacity: sending ? 0.7 : 1 }}>
-            {sent ? <><Check size={15} /> Envoyé</> : <><Mail size={15} /> {sending ? "Envoi…" : "Envoyer"}</>}
-          </button>
-        </div>
-        {sent && <div style={{ ...body, fontSize: 13, color: C.cyan, marginTop: 14 }}>Merci ! Hugo vous recontacte sous 24h.</div>}
+        <button onClick={resendRecap} disabled={sending || sent}
+          style={{ ...mono, fontSize: 13, padding: "14px 28px", background: sent ? "#1D9E75" : C.orange, color: sent ? "#fff" : "#1a1206", border: "none", borderRadius: 4, cursor: sent ? "default" : "pointer", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 8, opacity: sending ? 0.7 : 1 }}>
+          {sent ? <><Check size={15} /> Récap envoyé</> : <><Mail size={15} /> {sending ? "Envoi…" : "M'envoyer mon récap"}</>}
+        </button>
+        {sent && <div style={{ ...body, fontSize: 13, color: C.orange, marginTop: 14 }}>C'est parti ! Vérifiez votre boîte mail. Hugo vous recontacte sous 24h.</div>}
       </div>
 
       <button onClick={onRestart} style={{ ...mono, fontSize: 12, color: C.muted, background: "none", border: "none", cursor: "pointer", marginTop: 28, display: "block", marginInline: "auto" }}>
@@ -632,8 +643,12 @@ export default function App() {
   const [result, setResult] = useState(null);
 
   const finish = (answers) => {
-    setResult(computeScore(answers, setup.sector));
+    const r = computeScore(answers, setup.sector);
+    setResult(r);
     setStep("results");
+    // Notification automatique : dès la fin du questionnaire, tu reçois le
+    // récap par mail, et l'autoréponse Formspree part vers le client.
+    submitToFormspree(setup, r, { source: "fin_questionnaire" }).catch(() => {});
   };
 
   return (
